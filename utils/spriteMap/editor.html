@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8" />
+	<title>Karajay</title>
+	<style>
+		body { background: lightgrey; }
+		canvas {
+			background-color: white;
+			padding: 0;
+			margin: 5px;
+		}
+
+	</style>
+	<script>
+
+		var cnvone,
+		    ctxone,
+		    image,
+		    mousein,
+		    results = {};
+
+		document.addEventListener('DOMContentLoaded', function() {
+			cnvone = document.querySelector('#canvasOne');
+			ctxone = cnvone.getContext('2d');
+		});
+
+
+		function loadImg() {
+			let imgPath = document.querySelector('#img').value;
+
+			image = new Image();
+			image.src = imgPath;
+			image.onload = () => {
+				let width  = image.width;
+				let height = image.height;
+				cnvone.width = width;
+				cnvone.height = height;
+				ctxone.drawImage(image, 0, 0, width, height);
+			};
+		}
+
+		function splitFrames() {
+
+			let deposit = document.querySelector('#canvasDeposit'),
+			    framew = document.querySelector('#framew').value,
+			    frameh = document.querySelector('#frameh').value,
+			    cols  = Math.ceil(cnvone.width  / framew),
+			    lines = Math.ceil(cnvone.height / frameh),
+			    canvas,
+			    lineElem,
+			    scale = document.querySelector('#scale').value;
+
+			if(!scale) scale = 1;
+
+			deposit.innerHTML = '';
+
+			for(var line=0; line<=lines; line++) {
+
+				lineElem = document.createElement('div');
+
+				for(var col=0; col<=cols; col++) {
+
+					canvas = document.createElement('canvas');
+					canvas.width  = framew * scale;
+					canvas.height = frameh * scale;
+					canvas.style.backgroundImage    = 'url(\''+ document.querySelector('#img').value +'\')';
+					canvas.style.backgroundRepeat   = 'no-repeat';
+					canvas.style.backgroundPosition = '-'+ col * framew * scale +'px -'+ line * frameh * scale +'px';
+					canvas.style.backgroundSize     = cnvone.width * scale +'px '+ cnvone.height * scale +'px';
+					canvas.style.cursor = 'crosshair';
+					canvas.setAttribute('line', line);
+					canvas.setAttribute('col', col);
+               canvas.setAttribute('title', col * framew +' x '+ line * frameh);
+
+					canvas.addEventListener('mousedown', function(ev){
+						clearHitArea(ev)
+					});
+
+					canvas.addEventListener('mouseup', function(ev){
+						drawHitArea(ev);
+					});
+
+					//ctx = canvas.getContext('2d');
+					//ctx.drawImage(
+					//	image,
+					//	col  * framew,
+					//	line * frameh,
+					//	framew,
+					//	frameh,
+					//	0,
+					//	0,
+					//	canvas.width,
+					//	canvas.height
+					//);
+
+					setMatrix({
+						l: line,
+						c: col,
+						x: col * framew,
+						y: line * frameh,
+						w: framew,
+						h: frameh
+					});
+
+					lineElem.append(canvas);
+				}
+
+				deposit.append(lineElem);
+			}
+		}
+
+
+		function clearHitArea(ev) {
+			let col  = ev.target.getAttribute('col');
+			let line = ev.target.getAttribute('line');
+
+			mousein = [ ev.offsetX, ev.offsetY ];
+
+			if(typeof results == 'undefined') return;
+			if(typeof results[line] == 'undefined') return;
+			if(typeof results[line][col] == 'undefined') return;
+
+			if(results[line][col].hit.w > 0) {
+				let ctx = ev.target.getContext('2d');
+				ctx.clearRect(
+					results[line][col].hit.x,
+					results[line][col].hit.y,
+					results[line][col].hit.w,
+					results[line][col].hit.h
+				);
+			}
+		}
+
+
+		function drawHitArea(ev) {
+
+			let col  = ev.target.getAttribute('col');
+			let line = ev.target.getAttribute('line');
+
+			let ctx = ev.target.getContext('2d');
+
+			let scale = document.querySelector('#scale').value;
+
+			let x = mousein[0] / scale;
+			let y = mousein[1] / scale;
+			let w = ev.offsetX-mousein[0] / scale;
+			let h = ev.offsetY-mousein[1] / scale;
+
+			if(h < 0) {
+				y = y + h;
+				h = Math.abs(h);
+			}
+
+			if(w < 0) {
+				x = x + w;
+				w = Math.abs(w);
+			}
+
+			ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+			ctx.fillRect(x, y, w, h);
+
+			console.log({
+				l: line,
+				c: col,
+				hitx: x,
+				hity: y,
+				hitw: w,
+				hith: h
+			});
+
+			setMatrix({
+				l: line,
+				c: col,
+				hitx: x,
+				hity: y,
+				hitw: w,
+				hith: h
+			});
+		}
+
+
+		function setMatrix({l, c, x, y, w, h, hitx, hity, hitw, hith}) {
+
+			if(typeof results       == 'undefined') results    = {};
+			if(typeof results[l]    == 'undefined') results[l] = {};
+			if(typeof results[l][c] == 'undefined') {
+				results[l][c] = {
+					pos: { x: 0, y: 0, w: 0, h: 0 },
+					hit: { x: 0, y: 0, w: 0, h: 0 }
+				};
+			}
+
+			if(x    != undefined) results[l][c].pos.x = x;
+			if(y    != undefined) results[l][c].pos.y = y;
+			if(w    != undefined) results[l][c].pos.w = w;
+			if(h    != undefined) results[l][c].pos.h = h;
+			if(hitx != undefined) results[l][c].hit.x = hitx;
+			if(hity != undefined) results[l][c].hit.y = hity;
+			if(hitw != undefined) results[l][c].hit.w = hitw;
+			if(hith != undefined) results[l][c].hit.h = hith;
+		}
+	</script>
+</head>
+<body>
+	<input type="text" id="img" value="sprites/player/adventurer-1.5/mapRight.png">
+	<button onclick="loadImg()">Carregar</button><br>
+
+	<canvas id="canvasOne"></canvas><br>
+	Cada frame tem:<br>
+	Largura: <input type="tel" size="3" id="framew" value="50">px<br>
+	Altura:  <input type="tel" size="3" id="frameh" value="37">px<br>
+	Escala:  <input type="tel" size="3" id="scale" value="2">x<br>
+	<button onclick="splitFrames()">Dividir</button>
+	<div id="canvasDeposit">
+
+
+	</div>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8" />
+	<title>Cata Sprite</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+		}
+		body { background: lightgrey; }
+		canvas {
+			background-color: rgb(188, 186, 186);
+		}
+
+	</style>
+	<script>
+
+		var canvas,
+			ctx,
+			image,
+			fixX = 0,
+			fixY = 0;
+
+
+		document.addEventListener('DOMContentLoaded', function() {
+			canvas = document.querySelector('#canvasOne');
+			ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+			let fix = canvas.getBoundingClientRect();
+			fixX = fix.left;
+			fixY = fix.top;
+
+			startEvents();
+		});
+
+
+		function startEvents() {
+
+			loadImg();
+
+			canvas.addEventListener('click', function(ev){
+				let ini = getPosInicial(ev);
+				if(ini) {
+					let limits = getLimits(ini);
+
+					ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+					ctx.fillRect(
+						limits.left,
+						limits.top,
+						limits.right  - limits.left,
+						limits.bottom - limits.top
+					);
+
+					console.log(
+						limits.top,
+						limits.bottom,
+						limits.left,
+						limits.right
+					)
+				}
+			});
+		}
+
+
+		function loadImg() {
+
+			let imageSrc = 'bgRoom4.png';
+
+			image = new Image();
+			image.src = imageSrc;
+			image.onload = () => {
+				canvas.width  = image.width;
+				canvas.height = image.height;
+				//canvas.style.backgroundImage = 'url(\''+ imageSrc +'\')';
+				canvas.style.cursor = 'crosshair';
+				ctx.drawImage(image, 0, 0, image.width, image.height);
+			};
+
+			let canvasOffset = canvas.getBoundingClientRect();
+			fixX = canvasOffset.left;
+			fixY = canvasOffset.top;
+		}
+
+
+		function getPosInicial(ev) {
+
+			var html = document.querySelector('html');
+
+			let pos = {
+				x: ev.clientX-fixX+html.scrollLeft,
+				y: ev.clientY-fixY+html.scrollTop
+			}
+
+			if(!temCor(pos)) return false;
+
+			return pos;
+		}
+
+
+		function getLimits(ini) {
+
+			let laterals = getHorizontalLimit(ini);
+
+			let pos = {
+				x: laterals.right,
+				y: ini.y
+			};
+			let vert = getVerticalLimit(pos);
+			let rightTop    = vert.top;
+			let rightBottom = vert.bottom;
+
+			pos.x = laterals.left;
+			vert = getVerticalLimit(pos);
+			let leftTop    = vert.top;
+			let leftBottom = vert.bottom;
+
+			var top    = (rightTop > leftTop) ? rightTop : leftTop;
+			var bottom = (rightBottom < leftBottom) ? rightBottom : leftBottom;
+
+			return {
+				top:    top,
+				bottom: bottom,
+				left:   laterals.left,
+				right:  laterals.right
+			};
+		}
+
+
+		function getHorizontalLimit(ini) {
+
+			let pos = ini;
+			pos.x++;
+			while(temCor(pos)) {
+				pos = umPassoAFrente(pos, '>');
+			}
+			let right = pos.x-1;
+
+			pos = ini;
+			pos.x--;
+			while(temCor(pos)) {
+				pos = umPassoAFrente(pos, '<');
+			}
+			let left = pos.x+1;
+
+			return {
+				right: right,
+				left:  left
+			};
+		}
+
+
+		function getVerticalLimit(ini) {
+
+			let pos = ini;
+			pos.y--;
+			while(temCor(pos)) {
+				pos = umPassoAFrente(pos, '^');
+			}
+			let top = pos.y+1;
+
+			pos = ini;
+			pos.y++;
+			while(temCor(pos)) {
+				umPassoAFrente(pos, 'v');
+			}
+			let bottom = pos.y-1;
+
+			return {
+				top:    top,
+				bottom: bottom
+			};
+		}
+
+
+		function umPassoAFrente(pos, d) {
+			// ajustaMaxXY();
+			pintaPixel(pos); //Pra debug
+			if     (d == '>') pos.x++;
+			else if(d == 'v') pos.y++;
+			else if(d == '<') pos.x--;
+			else if(d == '^') pos.y--;
+			return pos;
+		}
+
+
+		function temCor(pos, lado) {
+
+			x = pos.x;
+			y = pos.y;
+			let arr;
+
+			if(lado == '>' || lado == '<') {
+				arr = getPixelLado(lado);
+				x = arr.x;
+				y = arr.y;
+			}
+			else if(lado == '^') {
+				arr = getPixelAFrente();
+				x = arr.x;
+				y = arr.y;
+			}
+
+			let p = ctx.getImageData(x, y, 1, 1).data;
+			// console.log(p[0], p[1], p[2]);
+			return (p[0] + p[1] + p[2] > 0);
+			// return (p[0] + p[1] + p[2] > 0 && p[1] != 254);
+		}
+
+
+		function pintaPixel(pos, r, g, b) {
+			//return;
+
+			if(r === undefined) r = 0;
+			if(g === undefined) g = 254;
+			if(b === undefined) b = 0;
+
+			let imgData = ctx.getImageData(pos.x, pos.y, 1, 1);
+			imgData.data[0] = r;
+			imgData.data[1] = g;
+			imgData.data[2] = b;
+			imgData.data[3] = 255;
+			ctx.putImageData(imgData, pos.x, pos.y);
+		}
+
+		// function clearHitArea(ev) {
+		// 	mousein = [ ev.offsetX, ev.offsetY ];
+
+		// 	ctx.clearRect(0, 0, canvas.width, canvas.height);
+		// }
+
+
+		// function drawHitArea(ev) {
+
+		// 	let x = mousein[0];
+		// 	let y = mousein[1];
+		// 	let w = ev.offsetX-x;
+		// 	let h = ev.offsetY-y;
+
+		// 	if(h < 0) {
+		// 		y = y + h;
+		// 		h = Math.abs(h);
+		// 	}
+
+		// 	if(w < 0) {
+		// 		x = x + w;
+		// 		w = Math.abs(w);
+		// 	}
+
+		// 	ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+		// 	ctx.fillRect(x, y, w, h);
+
+		// 	console.log({
+		// 		hitx: x,
+		// 		hity: y,
+		// 		hitw: w,
+		// 		hith: h
+		// 	});
+		// }
+
+
+
+	</script>
+</head>
+<body>
+
+	<canvas id="canvasOne"></canvas>
+
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8" />
+	<title>Karajay</title>
+	<style>
+
+		body { background: lightgrey; }
+
+		canvas {
+			background-color: white;
+			padding: 0;
+		}
+
+		#coordArea {
+			width: 1024px;
+			height: 100px;
+		}
+
+	</style>
+
+</head>
+<body>
+
+	<canvas></canvas>
+
+	<div>
+		Img path:<br>
+		<input type="text" id="imgPath" value="sprites/enemies/guiorg/mapRight.png" onchange="javascript:loadImg()">
+	</div>
+
+	<div>
+		Coords:<br>
+		<textarea id="coordArea" onchange="javascript:atualizar()">
+{ "pos": { "x": 0,   "y": 0, "w": 50, "h": 48 }, "hit": { "x": 15, "y": 7, "w": 18, "h": 29 } },
+{ "pos": { "x": 50,  "y": 0, "w": 50, "h": 48 }, "hit": { "x": 15, "y": 7, "w": 18, "h": 29 } },
+{ "pos": { "x": 100, "y": 0, "w": 50, "h": 48 }, "hit": { "x": 15, "y": 7, "w": 18, "h": 29 } },
+{ "pos": { "x": 150, "y": 0, "w": 50, "h": 48 }, "hit": { "x": 15, "y": 7, "w": 18, "h": 29 } }
+		</textarea>
+	</div>
+
+	<div>
+		Frame id:<br>
+		<input type="number" id="coordLineId" value="0" min="0" max="0" onchange="javascript:atualizar()">
+		<button onclick="javascript:prevFrame()">«</button>
+		<button onclick="javascript:nextFrame()">»</button>
+		<input type="checkbox" id="looper" value="1" onclick="javascript:freak()">
+	</div>
+
+	<div>
+		Scale:<br>
+		<input type="text" id="scaler" value="3" onchange="javascript:atualizar()">
+	</div>
+
+	<div>
+		<button type="button" onclick="javascript:atualizar()">Atualizar</button>
+	</div>
+
+</body>
+<script>
+
+const canvas = document.querySelector('canvas');
+const C      = canvas.getContext('2d');
+
+canvas.width = 1024;
+canvas.height = 576;
+
+const cross = {
+	x: 400,
+	y: 200
+}
+
+const imgPath     = document.getElementById('imgPath');
+const coordArea   = document.getElementById('coordArea');
+const looper      = document.getElementById('looper');
+const scaler      = document.getElementById('scaler');
+const coordLineId = document.getElementById('coordLineId');
+
+arrCoords = [];
+imgToDraw = new Image();
+
+loadImg();
+
+function freak() {
+	if(looper.checked) {
+		setTimeout(function(){
+
+			atualizar();
+			freak();
+
+			coordLineId.value++;
+			if(coordLineId.value >= arrCoords.length) coordLineId.value = 0;
+
+		}, 100);
+	}
+}
+
+function nextFrame() {
+	coordLineId.value++;
+	if(coordLineId.value >= arrCoords.length) coordLineId.value = 0;
+	atualizar();
+}
+
+function prevFrame() {
+	coordLineId.value--;
+	if(coordLineId.value == -1) coordLineId.value = arrCoords.length-1;
+	atualizar();
+}
+
+
+function loadImg() {
+	imgToDraw.src = imgPath.value;
+}
+
+
+function atualizar() {
+
+	C.clearRect(0, 0, canvas.width, canvas.height);
+
+	setArrCoord();
+
+	setCross();
+
+	let scale = parseInt(scaler.value);
+
+	let item = getLineCoord();
+
+	//Hitbox
+	C.fillStyle = 'red';
+	C.fillRect(cross.x, cross.y, item.hit.w * scale, item.hit.h * scale);
+
+	//Frame box
+	C.fillStyle = 'rgba(0, 0, 255, 0.2)';
+	C.fillRect(
+		cross.x - item.hit.x * scale,
+		cross.y - item.hit.y * scale,
+		item.pos.w * scale,
+		item.pos.h * scale
+	);
+
+	console.log();
+
+	C.drawImage(
+		imgToDraw,
+		item.pos.x,
+		item.pos.y,
+		item.pos.w,
+		item.pos.h,
+		cross.x - item.hit.x * scale,
+		cross.y - item.hit.y * scale,
+		item.pos.w * scale,
+		item.pos.h * scale
+	);
+
+}
+
+
+function setCross() {
+
+	C.beginPath();
+	C.moveTo(0, cross.y);
+	C.lineTo(canvas.width, cross.y);
+	C.stroke();
+
+	C.beginPath();
+	C.moveTo(cross.x, 0);
+	C.lineTo(cross.x, canvas.height);
+	C.stroke();
+}
+
+
+function getLineCoord() {
+	let id = coordLineId.value;
+	return arrCoords[id];
+}
+
+function setArrCoord() {
+	let tmp = coordArea.value;
+
+	let arr = tmp.split(',\n');
+
+	arrCoords = [];
+	arr.forEach(item => {
+		arrCoords.push( JSON.parse(item) );
+	});
+
+	coordLineId.setAttribute('max', arrCoords.length-1);
+}
+
+</script>
+</html>

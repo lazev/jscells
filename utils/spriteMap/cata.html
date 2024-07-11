@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8" />
+	<title>Cata Sprite</title>
+	<style>
+		body { background: lightgrey; }
+		canvas {
+			background-color: rgb(188, 186, 186);
+			padding: 0;
+			margin: 5px;
+		}
+
+	</style>
+	<script>
+
+		var canvas,
+			ctx,
+			image,
+			fixX = 0,
+			fixY = 0,
+			iniBordaX = 0,
+			iniBordaY = 0,
+			X = 0,
+			Y = 0,
+			D = '>',
+			maxX=0,
+			maxY=0,
+			minX=9999999,
+			minY=9999999;
+
+		document.addEventListener('DOMContentLoaded', function() {
+			canvas = document.querySelector('#canvasOne');
+			ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+			let fix = canvas.getBoundingClientRect();
+			fixX = fix.left;
+			fixY = fix.top
+
+			startEvents();
+		});
+
+
+		function startEvents() {
+			canvas.addEventListener('click', function(ev){
+				if(getPosInicial(ev)) {
+					if(procuraBorda()) {
+						contornaImg();
+					}
+				}
+
+			});
+		}
+
+
+		function getPosInicial(ev) {
+
+			maxX = 0;
+			maxY = 0;
+			minX = 9999999;
+			minY = 9999999;
+
+			X = ev.clientX-fixX;
+			Y = ev.clientY-fixY;
+			if(!temCor()) return false;
+			return true;
+		}
+
+
+		function procuraBorda(ev) {
+			while(temCor(X, Y)) {
+				umPassoAFrente();
+			}
+			iniBordaX = X;
+			iniBordaY = Y;
+
+			return true;
+		}
+
+
+		function moldura(xini, yini, xfim, yfim) {
+			ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+			// console.log(xini, yini, xfim-xini, yfim-yini);
+
+			ctx.fillRect(xini, yini, xfim-xini, yfim-yini);
+		}
+
+
+		function contornaImg() {
+			if(temCor('>')) {
+				if(temCor('^')) {
+					// console.log('Anti horario');
+					giraAntiHorario();
+				} else {
+					// console.log('Passo frente');
+					umPassoAFrente();
+				}
+
+			} else {
+				// console.log('Horario');
+				giraHorario();
+				// console.log('Passo frente');
+				umPassoAFrente();
+				pintaPixel(254, 0, 0);
+			}
+
+			if(X == iniBordaX && Y == iniBordaY) {
+				moldura(minX, minY, maxX, maxY);
+				// console.log('Fim');
+			}
+			else contornaImg();
+		}
+
+		function temCor(lado) {
+
+			x = X;
+			y = Y;
+			let arr;
+
+			if(lado == '>' || lado == '<') {
+				arr = getPixelLado(lado);
+				x = arr.x;
+				y = arr.y;
+			}
+			else if(lado == '^') {
+				arr = getPixelAFrente();
+				x = arr.x;
+				y = arr.y;
+			}
+
+			let p = ctx.getImageData(x, y, 1, 1).data;
+			// console.log(p[0], p[1], p[2]);
+			return (p[0] + p[1] + p[2] > 0 && p[1] != 254);
+		}
+
+		function getPixelLado(lado) {
+			x = X;
+			y = Y;
+			if(lado == '>') {
+				if     (D == '>') y++;
+				else if(D == 'v') x--;
+				else if(D == '<') y--;
+				else if(D == '^') x++;
+			}
+			else if(lado == '<') {
+				if     (D == '>') y--;
+				else if(D == 'v') x++;
+				else if(D == '<') y++;
+				else if(D == '^') x--;
+			}
+
+			return {x: x, y: y};
+		}
+
+		function getPixelAFrente() {
+			x = X;
+			y = Y;
+			if     (D == '>') x++;
+			else if(D == 'v') y++;
+			else if(D == '<') x--;
+			else if(D == '^') y--;
+			return {x: x, y: y};
+		}
+
+		function umPassoAFrente() {
+			ajustaMaxXY();
+			pintaPixel(); //Pra debug
+			if     (D == '>') X++;
+			else if(D == 'v') Y++;
+			else if(D == '<') X--;
+			else if(D == '^') Y--;
+		}
+
+		function umPassoAtras() {
+			ajustaMaxXY();
+			pintaPixel(); //Pra debug
+			if     (D == '>') X--;
+			else if(D == 'v') Y--;
+			else if(D == '<') X++;
+			else if(D == '^') Y++;
+		}
+
+		function pintaPixel(r, g, b) {
+			// return;
+
+			if(r === undefined) r = 0;
+			if(g === undefined) g = 254;
+			if(b === undefined) b = 0;
+
+			let imgData = ctx.getImageData(X, Y, 1, 1);
+			imgData.data[0] = r;
+			imgData.data[1] = g;
+			imgData.data[2] = b;
+			imgData.data[3] = 255;
+			ctx.putImageData(imgData, X, Y);
+		}
+
+		function giraHorario() {
+			if     (D == '>') D = 'v';
+			else if(D == 'v') D = '<';
+			else if(D == '<') D = '^';
+			else if(D == '^') D = '>';
+		}
+
+		function giraAntiHorario() {
+			if     (D == '>') D = '^';
+			else if(D == 'v') D = '>';
+			else if(D == '<') D = 'v';
+			else if(D == '^') D = '<';
+		}
+
+		function ajustaMaxXY() {
+			if(X > maxX) maxX = X;
+			if(X < minX) minX = X;
+			if(Y > maxY) maxY = Y;
+			if(Y < minY) minY = Y;
+		}
+
+
+		function loadImg() {
+			let imgPath = document.querySelector('#img').value;
+
+			image = new Image();
+			image.src = imgPath;
+			//image.src = 'teste.png';
+			//image.src = 'abc.png';
+			image.onload = () => {
+				canvas.width  = image.width;
+				canvas.height = image.height;
+				//canvas.style.backgroundImage = 'url(\''+ document.querySelector('#img').value +'\')';
+				//canvas.style.cursor = 'crosshair';
+				ctx.drawImage(image, 0, 0, image.width, image.height);
+			};
+
+			let canvasOffset = canvas.getBoundingClientRect();
+			fixX = canvasOffset.left;
+			fixY = canvasOffset.top;
+		}
+
+
+		// function clearHitArea(ev) {
+		// 	mousein = [ ev.offsetX, ev.offsetY ];
+
+		// 	ctx.clearRect(0, 0, canvas.width, canvas.height);
+		// }
+
+
+		// function drawHitArea(ev) {
+
+		// 	let x = mousein[0];
+		// 	let y = mousein[1];
+		// 	let w = ev.offsetX-x;
+		// 	let h = ev.offsetY-y;
+
+		// 	if(h < 0) {
+		// 		y = y + h;
+		// 		h = Math.abs(h);
+		// 	}
+
+		// 	if(w < 0) {
+		// 		x = x + w;
+		// 		w = Math.abs(w);
+		// 	}
+
+		// 	ctx.fillStyle = 'rgba(0, 0, 255, 0.4)';
+		// 	ctx.fillRect(x, y, w, h);
+
+		// 	console.log({
+		// 		hitx: x,
+		// 		hity: y,
+		// 		hitw: w,
+		// 		hith: h
+		// 	});
+		// }
+
+
+
+	</script>
+</head>
+<body>
+	<input type="text" id="img" value="../../assets/hero/sprites.png">
+	<button onclick="loadImg()">Carregar</button><br>
+
+	<canvas id="canvasOne"></canvas><br>
+
+	</div>
+</body>
+</html>
